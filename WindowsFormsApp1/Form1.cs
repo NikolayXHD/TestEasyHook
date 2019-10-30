@@ -7,6 +7,7 @@ namespace GitUI.Theming
 		public Form1()
 		{
 			InitializeComponent();
+			MessageBox.Show("Some message", "Caption");
 		}
 	}
 }

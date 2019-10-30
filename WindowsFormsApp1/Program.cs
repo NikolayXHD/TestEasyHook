@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace GitUI.Theming
@@ -11,7 +13,21 @@ namespace GitUI.Theming
 		[STAThread]
 		static void Main()
 		{
-			Win32ThemingHooks.InstallThemeHooks();
+			Win32ThemingHooks.InstallColorHooks(new StaticTheme(new Dictionary<KnownColor, Color>
+			{
+				[KnownColor.Window] = Color.Yellow,
+				[KnownColor.Control] = Color.Yellow,
+
+				[KnownColor.WindowText] = Color.Red,
+				[KnownColor.ControlText] = Color.Red,
+
+				[KnownColor.GrayText] = Color.Brown,
+
+				[KnownColor.ScrollBar] = Color.Green,
+				[KnownColor.ActiveBorder] = Color.Magenta,
+				[KnownColor.InactiveBorder] = Color.DarkMagenta,
+			}));
+
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(false);
 			Application.Run(new Form1());
