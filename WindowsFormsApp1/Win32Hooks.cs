@@ -14,6 +14,7 @@ namespace GitUI.Theming
         private static MessageBoxADelegate _messageBoxABypass;
         private static MessageBoxWDelegate _messageBoxWBypass;
         private static OpenThemeDataDelegate _openThemeDataBypass;
+        private static OpenThemeDataExDelegate _openThemeDataExBypass;
         private static CloseThemeDataDelegate _closeThemeDataBypass;
         private static DrawThemeBackgroundDelegate _drawThemeBackgroundBypass;
 
@@ -22,6 +23,7 @@ namespace GitUI.Theming
         private static LocalHook _messageBoxAHook;
         private static LocalHook _messageBoxWHook;
         private static LocalHook _openThemeDataHook;
+        private static LocalHook _openThemeDataExHook;
         private static LocalHook _closeThemeDataHook;
         private static LocalHook _drawThemeBackgroundHook;
 
@@ -43,6 +45,9 @@ namespace GitUI.Theming
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true, CharSet = CharSet.Unicode)]
         private delegate IntPtr OpenThemeDataDelegate(IntPtr hWnd, String classList);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true, CharSet = CharSet.Unicode)]
+        private delegate IntPtr OpenThemeDataExDelegate(IntPtr hWnd, String classList, int dwflags);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
         private delegate int CloseThemeDataDelegate(IntPtr hTheme);
@@ -86,6 +91,11 @@ namespace GitUI.Theming
                 "uxtheme.dll",
                 "OpenThemeData",
                 OpenThemeDataHook);
+
+            (_openThemeDataExHook, _openThemeDataExBypass) = InstallHook<OpenThemeDataExDelegate>(
+                "uxtheme.dll",
+                "OpenThemeData",
+                OpenThemeDataExHook);
 
             (_closeThemeDataHook, _closeThemeDataBypass) = InstallHook<CloseThemeDataDelegate>(
                 "uxtheme.dll",
@@ -185,6 +195,19 @@ namespace GitUI.Theming
         private static IntPtr OpenThemeDataHook(IntPtr hwnd, string classList)
         {
             var htheme = _openThemeDataBypass(hwnd, classList);
+            if (!_classesByTheme.TryGetValue(htheme, out var classes))
+            {
+                classes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                _classesByTheme.Add(htheme, classes);
+            }
+
+            classes.Add(classList);
+            return htheme;
+        }
+
+        private static IntPtr OpenThemeDataExHook(IntPtr hwnd, string classList, int dwflags)
+        {
+            var htheme = _openThemeDataExBypass(hwnd, classList, dwflags);
             if (!_classesByTheme.TryGetValue(htheme, out var classes))
             {
                 classes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

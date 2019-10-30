@@ -1,5 +1,4 @@
-﻿using System;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 
 namespace GitUI.Theming
 {
@@ -8,11 +7,6 @@ namespace GitUI.Theming
 		public Form1()
 		{
 			InitializeComponent();
-		}
-
-		private void btnTouch_Click(object sender, EventArgs e)
-		{
-
 		}
 	}
 }
