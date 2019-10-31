@@ -36,20 +36,19 @@
 			// textBox1
 			//
 			this.textBox1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-			this.textBox1.Enabled = false;
-			this.textBox1.Location = new System.Drawing.Point(341, 66);
+			this.textBox1.Location = new System.Drawing.Point(320, 66);
 			this.textBox1.Multiline = true;
 			this.textBox1.Name = "textBox1";
 			this.textBox1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.textBox1.Size = new System.Drawing.Size(100, 37);
+			this.textBox1.Size = new System.Drawing.Size(121, 65);
 			this.textBox1.TabIndex = 2;
-			this.textBox1.Text = "TextBox\r\nsdfgsdf\r\ngsdfg";
+			this.textBox1.Text = "TextBox\r\nsdfgsdf\r\ngsdfgert\r\nwer\r\ntwe\r\nrtw\r\ner\r\ntwertwe";
 			//
 			// richTextBox1
 			//
 			this.richTextBox1.Location = new System.Drawing.Point(511, 65);
 			this.richTextBox1.Name = "richTextBox1";
-			this.richTextBox1.Size = new System.Drawing.Size(248, 90);
+			this.richTextBox1.Size = new System.Drawing.Size(248, 91);
 			this.richTextBox1.TabIndex = 3;
 			this.richTextBox1.Text = "RichTextBox\nasd\nas\ndas\nda\nsd\nas\ndas\nda\nsdas";
 			//

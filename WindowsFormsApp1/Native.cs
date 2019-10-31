@@ -1,4 +1,9 @@
-﻿namespace GitUI.Theming
+﻿using System;
+using System.Drawing;
+using System.Runtime.InteropServices;
+using System.Text;
+
+namespace GitUI.Theming
 {
 	static class Native
 	{
@@ -487,6 +492,54 @@
 			TMT_ATLASIMAGE = 8000,
 			TMT_ATLASINPUTIMAGE = 8001,
 			TMT_ATLASRECT = 8002,
+		}
+
+		public static class Methods
+		{
+			[DllImport("uxtheme.dll", ExactSpelling=true, CharSet=CharSet.Unicode)]
+			public static extern int GetThemeString(
+				IntPtr hTheme,
+				int iPartId, int iStateId, int iPropId,
+				out StringBuilder themeString,
+				int themeStringLength);
+		}
+
+		public static class Struct
+		{
+			[StructLayout(LayoutKind.Sequential)]
+			public class COMRECT
+			{
+				public int Left;
+				public int Top;
+				public int Right;
+				public int Bottom;
+
+				public COMRECT()
+				{
+				}
+
+				public COMRECT(int left, int top, int right, int bottom)
+				{
+					Left = left;
+					Top = top;
+					Right = right;
+					Bottom = bottom;
+				}
+
+				public Rectangle ToRectangle() =>
+					Rectangle.FromLTRB(Left, Top, Right, Bottom);
+
+				public override string ToString() =>
+					$"({Left},{Top}) -> ({Right},{Bottom})";
+			}
+
+			[StructLayout(LayoutKind.Sequential)]
+			public class DTBGOPTS
+			{
+				public short dwSize;
+				public short dwFlags;
+				public COMRECT rcClip;
+			}
 		}
 	}
 }

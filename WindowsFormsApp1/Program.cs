@@ -27,6 +27,7 @@ namespace GitUI.Theming
 				[KnownColor.ActiveBorder] = Color.Magenta,
 				[KnownColor.InactiveBorder] = Color.DarkMagenta,
 			}));
+			Win32ThemingHooks.InstallThemeHooks();
 
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(false);

@@ -2,7 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Windows.Forms;
 using EasyHook;
 
 namespace GitUI.Theming
@@ -68,14 +71,16 @@ namespace GitUI.Theming
         private delegate int CloseThemeDataDelegate(IntPtr hTheme);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
-        private delegate int DrawThemeBackgroundDelegate(IntPtr hTheme, IntPtr hdc,
+        private delegate int DrawThemeBackgroundDelegate(
+            IntPtr hTheme, IntPtr hdc,
             int partId, int stateId,
-            [In] COMRECT pRect, [In] COMRECT pClipRect);
+            [In] Native.Struct.COMRECT pRect, [In] Native.Struct.COMRECT pClipRect);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
-        private delegate int DrawThemeBackgroundExDelegate(IntPtr hTheme, IntPtr hdc,
+        private delegate int DrawThemeBackgroundExDelegate
+        (IntPtr hTheme, IntPtr hdc,
             int partId, int stateId,
-            [In] COMRECT pRect, [In] COMRECT pClipRect);
+            Native.Struct.COMRECT pRect, ref Native.Struct.DTBGOPTS poptions);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
         private delegate int GetThemeColorDelegate(IntPtr hTheme,
@@ -96,6 +101,7 @@ namespace GitUI.Theming
             _openThemeDataExHook?.Dispose();
             _closeThemeDataHook?.Dispose();
             _drawThemeBackgroundHook?.Dispose();
+            _drawThemeBackgroundExHook?.Dispose();
         }
 
         public static void InstallColorHooks(Theme theme)
@@ -109,16 +115,16 @@ namespace GitUI.Theming
 //                "user32.dll",
 //                "GetSysColor",
 //                ColorHook);
-//
-//            (_themeBrushHook, _themeBrushBypass) = InstallHook<ThemeBrushDelegate>(
-//                "uxtheme.dll",
-//                "GetThemeSysColorBrush",
-//                ThemeBrushHook);
-//
-//            (_themeColorHook, _themeColorBypass) = InstallHook<ThemeColorDelegate>(
-//                "uxtheme.dll",
-//                "GetThemeSysColor",
-//                ThemeColorHook);
+
+            (_themeBrushHook, _themeBrushBypass) = InstallHook<ThemeBrushDelegate>(
+                "uxtheme.dll",
+                "GetThemeSysColorBrush",
+                ThemeBrushHook);
+
+            (_themeColorHook, _themeColorBypass) = InstallHook<ThemeColorDelegate>(
+                "uxtheme.dll",
+                "GetThemeSysColor",
+                ThemeColorHook);
 
             (_getThemeColorHook, _getThemeColorBypass) =
                 InstallHook<GetThemeColorDelegate>(
@@ -151,7 +157,7 @@ namespace GitUI.Theming
 
             (_openThemeDataExHook, _openThemeDataExBypass) = InstallHook<OpenThemeDataExDelegate>(
                 "uxtheme.dll",
-                "OpenThemeData",
+                "OpenThemeDataEx",
                 OpenThemeDataExHook);
 
             (_closeThemeDataHook, _closeThemeDataBypass) = InstallHook<CloseThemeDataDelegate>(
@@ -164,6 +170,14 @@ namespace GitUI.Theming
                     "uxtheme.dll",
                     "DrawThemeBackground",
                     DrawThemeBackgroundHook);
+
+            (_drawThemeBackgroundExHook, _drawThemeBackgroundExBypass) =
+                InstallHook<DrawThemeBackgroundExDelegate>(
+                    "uxtheme.dll",
+                    "DrawThemeBackgroundEx",
+                    DrawThemeBackgroundExHook);
+
+            OpenThemeDataHook(IntPtr.Zero, "Scrollbar");
         }
 
         [DllImport("gdi32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -241,6 +255,13 @@ namespace GitUI.Theming
         private static int GetThemeColorHook(IntPtr htheme, int ipartid, int istateid, int ipropid, out int pcolor)
         {
             Debug.WriteLine($"GetThemeColor {htheme} {ipartid} {istateid} {(Native.Property)ipropid}");
+
+            Native.Methods.GetThemeString(htheme,
+                0, 0, (int)Native.Property.TMT_DISPLAYNAME,
+                out StringBuilder themeName, 1000);
+
+            Debug.WriteLine($"  {themeName}");
+
             KnownColor name;
             switch ((Native.Property)ipropid)
             {
@@ -375,104 +396,119 @@ namespace GitUI.Theming
 
         private static int CloseThemeDataHook(IntPtr htheme)
         {
-            Debug.WriteLine("CloseThemeDataEx " + htheme);
-            _classesByTheme.Remove(htheme);
+            Debug.WriteLine("CloseThemeData " + htheme);
             return _closeThemeDataBypass(htheme);
         }
 
-        private static int DrawThemeBackgroundHook(IntPtr htheme, IntPtr hdc, int partId, int stateId, COMRECT prect, COMRECT pcliprect)
+        private static int DrawThemeBackgroundHook(
+            IntPtr htheme, IntPtr hdc,
+            int partId, int stateId,
+            Native.Struct.COMRECT prect, Native.Struct.COMRECT pcliprect)
         {
             Debug.WriteLine($"DrawThemeBackground {htheme} part {partId} state {stateId}");
             if (_classesByTheme.TryGetValue(htheme, out var classes))
             {
-                var g = Graphics.FromHdc(hdc);
-                if (pcliprect != null)
-                {
-                    g.SetClip(pcliprect.ToRectangle());
-                }
-
                 if (classes.Contains("Scrollbar"))
                 {
+                    var g = Graphics.FromHdc(hdc);
+                    g.ResetClip();
+                    g.Clear(Color.Red);
+                    for (int i = -10; i < 10; i++)
+                    for (int j = -10; j < 10; j++)
+                        g.DrawString(
+                            $"{i}.{j}",
+                            new Font(FontFamily.GenericMonospace, 6f),
+                            new SolidBrush(Color.Yellow),
+                            i * 20, j* 20);
+                    g.Flush();
                     switch (partId)
                     {
                         case Native.ScrollBar.Parts.SBP_ARROWBTN:
-                            g.Clear(Color.Green);
-                            return 1;
+                            g.FillRectangle(new SolidBrush(Color.Green), prect.ToRectangle());
+                            break;
 
                         case Native.ScrollBar.Parts.SBP_THUMBBTNHORZ:
                         case Native.ScrollBar.Parts.SBP_THUMBBTNVERT:
-                            g.Clear(Color.Lime);
-                            return 1;
+                            g.FillRectangle(new SolidBrush(Color.Lime), prect.ToRectangle());
+                            break;
 
                         case Native.ScrollBar.Parts.SBP_LOWERTRACKHORZ:
                         case Native.ScrollBar.Parts.SBP_LOWERTRACKVERT:
                         case Native.ScrollBar.Parts.SBP_UPPERTRACKHORZ:
                         case Native.ScrollBar.Parts.SBP_UPPERTRACKVERT:
-                            g.Clear(Color.LightBlue);
-                            return 1;
+                            g.FillRectangle(new SolidBrush(Color.Olive), prect.ToRectangle());
+                            break;
 
                         case Native.ScrollBar.Parts.SBP_GRIPPERHORZ:
                         case Native.ScrollBar.Parts.SBP_GRIPPERVERT:
                         case Native.ScrollBar.Parts.SBP_SIZEBOX:
-                        default:
-                            break;
-                    }
-                }
-                else if (classes.Contains("Edit"))
-                {
-                    switch (partId)
-                    {
-                        case Native.Edit.Parts.EP_EDITBORDER_HSCROLL:
-                        case Native.Edit.Parts.EP_EDITBORDER_HVSCROLL:
-                        case Native.Edit.Parts.EP_EDITBORDER_VSCROLL:
-                            g.Clear(Color.Magenta);
-                            return 1;
-                        case Native.Edit.Parts.EP_BACKGROUND:
-                        case Native.Edit.Parts.EP_CARET:
-                        case Native.Edit.Parts.EP_EDITTEXT:
-                        case Native.Edit.Parts.EP_PASSWORD:
-                        case Native.Edit.Parts.EP_BACKGROUNDWITHBORDER:
-                        case Native.Edit.Parts.EP_EDITBORDER_NOSCROLL:
-                        default:
-                            break;
-                    }
-                }
-                else if (classes.Contains("Button-OK;Button"))
-                {
-                    switch (partId)
-                    {
-                        case Native.Button.Parts.BP_PUSHBUTTON:
-                            switch (stateId)
-                            {
-                                case Native.Button.States.PushButton.PBS_HOT:
-                                    g.Clear(Color.Blue);
-                                    break;
-                                case Native.Button.States.PushButton.PBS_NORMAL:
-                                    g.Clear(Color.Orange);
-                                    break;
-                                case Native.Button.States.PushButton.PBS_PRESSED:
-                                    g.Clear(Color.Red);
-                                    break;
-                                case Native.Button.States.PushButton.PBS_DISABLED:
-                                    g.Clear(Color.Gray);
-                                    break;
-                                case Native.Button.States.PushButton.PBS_DEFAULTED:
-                                    g.Clear(Color.Magenta);
-                                    break;
-                                case Native.Button.States.PushButton.PBS_DEFAULTED_ANIMATING:
-                                    g.Clear(Color.Magenta);
-                                    break;
-                            }
-
-                            return 1;
-                        default:
+                            g.FillRectangle(new SolidBrush(Color.Magenta), prect.ToRectangle());
                             break;
                     }
 
+                    g.Flush();
+                    return 0;
                 }
+//                else if (classes.Contains("Edit"))
+//                {
+//                    switch (partId)
+//                    {
+//                        case Native.Edit.Parts.EP_EDITBORDER_HSCROLL:
+//                        case Native.Edit.Parts.EP_EDITBORDER_HVSCROLL:
+//                        case Native.Edit.Parts.EP_EDITBORDER_VSCROLL:
+//                            g.Clear(Color.Magenta);
+//                            return 1;
+//                        case Native.Edit.Parts.EP_BACKGROUND:
+//                        case Native.Edit.Parts.EP_CARET:
+//                        case Native.Edit.Parts.EP_EDITTEXT:
+//                        case Native.Edit.Parts.EP_PASSWORD:
+//                        case Native.Edit.Parts.EP_BACKGROUNDWITHBORDER:
+//                        case Native.Edit.Parts.EP_EDITBORDER_NOSCROLL:
+//                        default:
+//                            break;
+//                    }
+//                }
+//                else if (classes.Contains("Button-OK;Button"))
+//                {
+//                    switch (partId)
+//                    {
+//                        case Native.Button.Parts.BP_PUSHBUTTON:
+//                            switch (stateId)
+//                            {
+//                                case Native.Button.States.PushButton.PBS_HOT:
+//                                    g.Clear(Color.Blue);
+//                                    break;
+//                                case Native.Button.States.PushButton.PBS_NORMAL:
+//                                    g.Clear(Color.Orange);
+//                                    break;
+//                                case Native.Button.States.PushButton.PBS_PRESSED:
+//                                    g.Clear(Color.Red);
+//                                    break;
+//                                case Native.Button.States.PushButton.PBS_DISABLED:
+//                                    g.Clear(Color.Gray);
+//                                    break;
+//                                case Native.Button.States.PushButton.PBS_DEFAULTED:
+//                                    g.Clear(Color.Magenta);
+//                                    break;
+//                                case Native.Button.States.PushButton.PBS_DEFAULTED_ANIMATING:
+//                                    g.Clear(Color.Magenta);
+//                                    break;
+//                            }
+//
+//                            return 1;
+//                        default:
+//                            break;
+//                    }
+//                }
             }
 
             return _drawThemeBackgroundBypass(htheme, hdc, partId, stateId, prect, pcliprect);
+        }
+
+        private static int DrawThemeBackgroundExHook(IntPtr htheme, IntPtr hdc, int partId, int stateId, Native.Struct.COMRECT prect, ref Native.Struct.DTBGOPTS poptions)
+        {
+            Debug.WriteLine($"DrawThemeBackgroundEx {htheme} part {partId} state {stateId}");
+            return _drawThemeBackgroundExBypass(htheme, hdc, partId, stateId, prect, ref poptions);
         }
 
         private static KnownColor GetKnownColor(int nIndex)
