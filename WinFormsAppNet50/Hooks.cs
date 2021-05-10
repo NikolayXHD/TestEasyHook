@@ -1,63 +1,47 @@
 ﻿using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
-using EasyHook;
+using Reloaded.Hooks;
+using Reloaded.Hooks.Definitions;
 
 namespace WinFormsAppNet50
 {
 	internal static class Hooks
 	{
-		private static ColorDelegate _colorBypass;
-		private static BrushDelegate _brushBypass;
-
-		private static LocalHook _colorHook;
-		private static LocalHook _brushHook;
+		private static IHook<ColorDelegate> _colorHook;
+		private static IHook<BrushDelegate> _brushHook;
 
 		[UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
 		private delegate int ColorDelegate(int nIndex);
 
-		[UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
+		[UnmanagedFunctionPointer(CallingConvention.StdCall)]
 		private delegate IntPtr BrushDelegate(int nIndex);
 
 		public static void InstallBrushHook()
 		{
-			(_brushHook, _brushBypass) = InstallHook<BrushDelegate>(
-				"user32.dll",
-				"GetSysColorBrush",
-				BrushHook);
+			IntPtr libHandle = LoadLibrary("user32");
+			IntPtr functionHandle = GetProcAddress(libHandle, "GetSysColorBrush");
+
+			_brushHook = ReloadedHooks.Instance
+				.CreateHook<BrushDelegate>(BrushHook, (long)functionHandle)
+				.Activate();
 		}
 
 		public static void InstallColorHook()
 		{
-			(_colorHook, _colorBypass) = InstallHook<ColorDelegate>(
-				"user32.dll",
-				"GetSysColor",
-				ColorHook);
-		}
+			IntPtr libHandle = LoadLibrary("user32");
+			IntPtr functionHandle = GetProcAddress(libHandle, "GetSysColor");
 
-		private static (LocalHook, TDelegate) InstallHook<TDelegate>(string dll, string method, TDelegate hookImpl)
-			where TDelegate: Delegate
-		{
-			var addr = LocalHook.GetProcAddress(dll, method);
-			var original = Marshal.GetDelegateForFunctionPointer<TDelegate>(addr);
-			var hook = LocalHook.Create(addr, hookImpl, null);
-
-			try
-			{
-				hook.ThreadACL.SetExclusiveACL(new int[0]);
-			}
-			catch
-			{
-				hook.Dispose();
-				throw;
-			}
-
-			return (hook, original);
+			_colorHook = ReloadedHooks.Instance
+				.CreateHook<ColorDelegate>(ColorHook, (long)functionHandle)
+				.Activate();
 		}
 
 		private static int ColorHook(int nIndex)
 		{
-			return ColorTranslator.ToWin32(Color.Magenta);
+			var result = ColorTranslator.ToWin32(Color.Magenta);
+			// var result = _colorHook.OriginalFunction.Invoke(nIndex);
+			return result;
 		}
 
 		private static IntPtr BrushHook(int nIndex)
@@ -67,5 +51,11 @@ namespace WinFormsAppNet50
 
 		[DllImport("gdi32.dll", CharSet = CharSet.Auto, SetLastError = true)]
 		private static extern IntPtr CreateSolidBrush(int nIndex);
+
+		[DllImport("kernel32", SetLastError=true, CharSet = CharSet.Ansi)]
+		static extern IntPtr LoadLibrary([MarshalAs(UnmanagedType.LPStr)]string lpFileName);
+
+		[DllImport("kernel32", CharSet=CharSet.Ansi, ExactSpelling=true, SetLastError=true)]
+		static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 	}
 }

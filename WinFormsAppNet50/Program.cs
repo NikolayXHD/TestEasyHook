@@ -11,8 +11,7 @@ namespace WinFormsAppNet50
 		[STAThread]
 		static void Main()
 		{
-			// fails immediately with
-			//   STATUS_NOT_SUPPORTED: Hooking near conditional jumps is not supported
+			// seems to work fine
 			// Hooks.InstallBrushHook();
 
 			// causes System.ExecutionEngineException
