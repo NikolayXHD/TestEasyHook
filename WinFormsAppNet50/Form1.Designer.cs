@@ -1,4 +1,4 @@
-﻿namespace GitUI.Theming
+﻿namespace WinFormsAppNet50
 {
 	partial class Form1
 	{

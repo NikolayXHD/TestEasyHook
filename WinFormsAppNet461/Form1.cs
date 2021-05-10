@@ -1,6 +1,6 @@
 ﻿using System.Windows.Forms;
 
-namespace GitUI.Theming
+namespace WinFormsAppNet461
 {
 	public partial class Form1 : Form
 	{

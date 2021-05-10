@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net5.0-windows</TargetFramework>
+		<UseWindowsForms>true</UseWindowsForms>
+		<Configurations>Debug;Release</Configurations>
+		<Platforms>AnyCPU;x64;x86</Platforms>
+		<AssemblyName>WinFormsAppNet50</AssemblyName>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+	  <Prefer32bit>true</Prefer32bit>
+	  <PlatformTarget>AnyCPU</PlatformTarget>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+	  <Prefer32bit>true</Prefer32bit>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\EasyHook\EasyHook\EasyHook.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="EasyHook32.dll">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="EasyHook64.dll">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
+
+</Project>
